@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDK WHAT TO NAME IT</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+
+        /* Left - Video Queue */
+        #queue {
+            width: 250px;
+            background-color: #333;
+            color: white;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        #queue h2 {
+            margin-top: 0;
+        }
+
+        #queue input {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        #queue button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #queue button:hover {
+            background-color: #0056b3;
+        }
+
+        .queue-item {
+            background-color: #444;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: move;
+        }
+
+        .queue-item button {
+            background-color: #d9534f;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 3px;
+            padding: 5px 10px;
+        }
+
+        .queue-item button:hover {
+            background-color: #c9302c;
+        }
+
+        /* Center - YouTube Video Canvas */
+        #videoCanvas {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #000;
+            color: white;
+        }
+
+        iframe {
+            width: 80%;
+            height: 80%;
+        }
+
+        /* Right - Chat Interface */
+        #chat {
+            width: 300px;
+            background-color: #222;
+            color: white;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chat h2 {
+            margin-top: 0;
+        }
+
+        #chat input {
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            width: calc(100% - 20px);
+        }
+
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+
+        .message {
+            background-color: #333;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .message span {
+            color: #007BFF;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Left - Video Queue -->
+<div id="queue">
+    <h2>Video Queue</h2>
+    <input type="text" id="videoLink" placeholder="Enter YouTube URL" />
+    <button onclick="addToQueue()">Add Video</button>
+    <div id="queueList" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+</div>
+
+<!-- Center - YouTube Video Canvas -->
+<div id="videoCanvas">
+    <iframe id="videoPlayer" src="https://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</div>
+
+<!-- Right - Chat Interface -->
+<div id="chat">
+    <h2>Chat</h2>
+    <div id="messages"></div>
+    <input type="text" id="chatInput" placeholder="Type a message..." onkeydown="sendMessage(event)" />
+</div>
+
+<script>
+    // Video Queue functionality
+    let videoQueue = [];
+    let currentVideoIndex = 0;
+
+    function addToQueue() {
+        const videoLink = document.getElementById("videoLink").value.trim();
+        if (videoLink) {
+            videoQueue.push(videoLink);
+            document.getElementById("videoLink").value = '';  // Clear input
+            displayQueue();
+            loadNextVideo();
+        }
+    }
+
+    function displayQueue() {
+        const queueList = document.getElementById("queueList");
+        queueList.innerHTML = '';
+        videoQueue.forEach((video, index) => {
+            const div = document.createElement('div');
+            div.classList.add('queue-item');
+            div.draggable = true;
+            div.setAttribute('ondragstart', `drag(event, ${index})`);
+            div.setAttribute('ondragover', 'allowDrop(event)');
+            div.setAttribute('ondrop', `drop(event, ${index})`);
+            div.innerHTML = `
+                    <span>Video ${index + 1}: ${video}</span>
+                    <button onclick="removeFromQueue(${index})">Remove</button>
+                `;
+            queueList.appendChild(div);
+        });
+    }
+
+    function removeFromQueue(index) {
+        videoQueue.splice(index, 1);
+        displayQueue();
+        loadNextVideo();
+    }
+
+    function loadNextVideo() {
+        if (videoQueue.length > 0) {
+            const videoUrl = videoQueue[currentVideoIndex];
+            const videoId = getYouTubeVideoId(videoUrl);
+            document.getElementById("videoPlayer").src = `https://www.youtube.com/embed/${videoId}`;
+        }
+    }
+
+    function getYouTubeVideoId(url) {
+        const regex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|\S+\?v=|(?:v|e(?:mbed)?)\/|\S*\?v=))([^"&?/ ]{11})/;
+        const match = url.match(regex);
+        return match ? match[1] : null;
+    }
+
+    // Drag and Drop functionality
+    function allowDrop(ev) {
+        ev.preventDefault();
+    }
+
+    function drag(ev, index) {
+        ev.dataTransfer.setData("text", index);
+    }
+
+    function drop(ev, targetIndex) {
+        ev.preventDefault();
+        const sourceIndex = ev.dataTransfer.getData("text");
+        if (sourceIndex !== targetIndex) {
+            const movedVideo = videoQueue[sourceIndex];
+            videoQueue.splice(sourceIndex, 1);
+            videoQueue.splice(targetIndex, 0, movedVideo);
+            displayQueue();
+            loadNextVideo();
+        }
+    }
+
+    // Chat functionality
+    function sendMessage(event) {
+        if (event.key === 'Enter') {
+            const messageInput = document.getElementById("chatInput");
+            const message = messageInput.value.trim();
+            if (message) {
+                const messagesContainer = document.getElementById("messages");
+                const newMessage = document.createElement('div');
+                newMessage.classList.add('message');
+                newMessage.innerHTML = `<span>User:</span> ${message}`;
+                messagesContainer.appendChild(newMessage);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;  // Scroll to the bottom
+                messageInput.value = '';  // Clear input
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
